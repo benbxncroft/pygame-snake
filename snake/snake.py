@@ -68,16 +68,16 @@ def handle_events():
 def handle_keys():
     global direction
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_w]:
+    if keys[pygame.K_w] or keys[pygame.K_UP]:
         if (direction != directions["down"]):
             direction = directions["up"]
-    if keys[pygame.K_s]:
+    if keys[pygame.K_s] or keys[pygame.K_DOWN]:
         if (direction != directions["up"]):
             direction = directions["down"]
-    if keys[pygame.K_a]:
+    if keys[pygame.K_a] or keys[pygame.K_LEFT]:
         if (direction != directions["right"]):
             direction = directions["left"]
-    if keys[pygame.K_d]:
+    if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
         if (direction != directions["left"]):
             direction = directions["right"]
 
