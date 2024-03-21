@@ -10,8 +10,7 @@ running = True
 start_screen = True
 PIXEL_WIDTH = 25
 
-def random_pos(is_player=False):
-    # TODO need to make sure positions are rounded to pixel width
+def random_pos(is_player=False) -> pygame.Vector2:
     if (is_player):
         # do not start player on edge of screen
         rand_value = (0.2, 0.8)
@@ -70,8 +69,11 @@ def handle_events():
                 snake_trail.pop()
             else:
                 food_pos = random_pos()
-                food = food = pygame.Rect(food_pos.x, food_pos.y, PIXEL_WIDTH,
-                                          PIXEL_WIDTH)
+                # while (pygame.Rect.collidepoint(food_pos.x, food_pos.y)):
+                #     food_pos = random_pos()
+                food = pygame.Rect(food_pos.x, food_pos.y, PIXEL_WIDTH,
+                                    PIXEL_WIDTH)
+
 
 def handle_keys():
     global direction
@@ -122,9 +124,9 @@ def draw_start_screen():
         })
 
         for line in text_lines:
-            text_pos = line['text'].get_rect(centerx=start_screen.get_width() / 2,
+            pos = line['text'].get_rect(centerx=start_screen.get_width() / 2,
                                         centery=line['height'])
-            start_screen.blit(line['text'], text_pos)
+            start_screen.blit(line['text'], pos)
 
     screen.blit(start_screen, (0, 0))
 
