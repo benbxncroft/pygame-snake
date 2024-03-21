@@ -7,6 +7,7 @@ screen = pygame.display.set_mode((1280, 720))
 clock = pygame.time.Clock()
 
 running = True
+show_start_screen = True
 PIXEL_WIDTH = 25
 
 def random_pos(is_player=False):
@@ -85,6 +86,19 @@ def draw_snake_chunk(chunk):
     pygame.draw.rect(screen, "grey", chunk, 0, 2)
     pygame.draw.rect(screen, "green", (chunk.left + 2, chunk.top + 2, chunk.width - 4, chunk.width - 4), 0, 2)
 
+def draw_start_screen():
+    start_screen = pygame.Surface(screen.get_size())
+    start_screen.convert()
+    start_screen.fill('black')
+
+    if pygame.font:
+        font = pygame.font.Font(None, 64)
+        text = font.render('Press any key to start', True, 'white')
+        text_pos = text.get_rect(centerx=start_screen.get_width() / 2, centery=start_screen.get_height() / 2)
+        start_screen.blit(text, text_pos)
+
+    screen.blit(start_screen, (0, 0))
+
 while running:
     clock.tick(60)  # limits FPS to 60
 
@@ -94,7 +108,10 @@ while running:
         if pygame.Rect.colliderect(snake_head, chunk):
             running = False
 
-    if in_bounds:
+    if show_start_screen:
+        draw_start_screen()
+        pygame.display.flip()
+    elif in_bounds:
         handle_events()
         handle_keys()
 
