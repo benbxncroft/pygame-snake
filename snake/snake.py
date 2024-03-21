@@ -7,7 +7,7 @@ screen = pygame.display.set_mode((1280, 720))
 clock = pygame.time.Clock()
 
 running = True
-show_start_screen = True
+start_screen = True
 PIXEL_WIDTH = 25
 
 def random_pos(is_player=False):
@@ -42,11 +42,17 @@ directions = {
 direction = random.choice(list(directions.values()))
 
 def handle_events():
+    global start_screen
     global running
     global food
     # poll for events
     # pygame.QUIT event means the user clicked X to close your window
     for event in pygame.event.get():
+        if event.type == pygame.KEYDOWN:
+            if start_screen:
+                start_screen = False
+                return
+
         if event.type == pygame.QUIT:
             running = False
         elif event.type == MOVE_EVENT:
@@ -64,11 +70,13 @@ def handle_events():
                 snake_trail.pop()
             else:
                 food_pos = random_pos()
-                food = food = pygame.Rect(food_pos.x, food_pos.y, PIXEL_WIDTH, PIXEL_WIDTH)
+                food = food = pygame.Rect(food_pos.x, food_pos.y, PIXEL_WIDTH,
+                                          PIXEL_WIDTH)
 
 def handle_keys():
     global direction
     keys = pygame.key.get_pressed()
+
     if keys[pygame.K_w] or keys[pygame.K_UP]:
         if (direction != directions["down"]):
             direction = directions["up"]
@@ -84,7 +92,8 @@ def handle_keys():
 
 def draw_snake_chunk(chunk):
     pygame.draw.rect(screen, "grey", chunk, 0, 2)
-    pygame.draw.rect(screen, "green", (chunk.left + 2, chunk.top + 2, chunk.width - 4, chunk.width - 4), 0, 2)
+    pygame.draw.rect(screen, "green", (chunk.left + 2, chunk.top + 2,
+                                       chunk.width - 4, chunk.width - 4), 0, 2)
 
 def draw_start_screen():
     start_screen = pygame.Surface(screen.get_size())
@@ -92,27 +101,52 @@ def draw_start_screen():
     start_screen.fill('black')
 
     if pygame.font:
-        font = pygame.font.Font(None, 64)
-        text = font.render('Press any key to start', True, 'white')
-        text_pos = text.get_rect(centerx=start_screen.get_width() / 2, centery=start_screen.get_height() / 2)
-        start_screen.blit(text, text_pos)
+        primary_font = pygame.font.Font(None, 64)
+        text_lines = []
+        text_lines.append({
+            'text': primary_font.render(
+                'Press any key to start', True, 'white'
+            ),
+            'height': (start_screen.get_height() / 2)
+                - (primary_font.get_linesize() / 2)
+                - 15
+        })
+        secondary_font = pygame.font.Font(None, 32)
+        text_lines.append({
+            'text': secondary_font.render(
+                'Use WASD or arrow keys to move', True, 'white'
+            ),
+            'height': (start_screen.get_height() / 2)
+                + (secondary_font.get_linesize() / 2)
+                + 15
+        })
+
+        for line in text_lines:
+            text_pos = line['text'].get_rect(centerx=start_screen.get_width() / 2,
+                                        centery=line['height'])
+            start_screen.blit(line['text'], text_pos)
 
     screen.blit(start_screen, (0, 0))
 
+def in_bounds():
+    screen_rect = pygame.Rect(0, 0, screen.get_width(), screen.get_height())
+    return screen_rect.collidepoint(snake_head.left + (PIXEL_WIDTH / 2),
+                                    snake_head.top + (PIXEL_WIDTH / 2))
+
 while running:
     clock.tick(60)  # limits FPS to 60
-
-    in_bounds = pygame.Rect(0, 0, screen.get_width(), screen.get_height()).collidepoint(snake_head.left + (PIXEL_WIDTH / 2), snake_head.top + (PIXEL_WIDTH / 2))
 
     for chunk in snake_trail:
         if pygame.Rect.colliderect(snake_head, chunk):
             running = False
 
-    if show_start_screen:
+    handle_events()
+
+    if start_screen:
         draw_start_screen()
         pygame.display.flip()
-    elif in_bounds:
-        handle_events()
+
+    elif in_bounds():
         handle_keys()
 
         # fill the screen with a color to wipe away anything from last frame
