@@ -40,8 +40,11 @@ def move_snake(state) -> None:
 
 def reset_food(state) -> None:
     state.food_pos = random_pos(state.screen)
-    # while (pygame.Rect.collidepoint(food_pos.x, food_pos.y)):
-    #     food_pos = random_pos()
+    if pygame.Rect.collidepoint(state.snake_head, state.food_pos):
+        reset_food(state)
+    for chunk in state.snake_trail:
+        if pygame.Rect.collidepoint(chunk, state.food_pos):
+            reset_food(state)
     state.food = pygame.Rect(
         state.food_pos.x, state.food_pos.y, PIXEL_WIDTH, PIXEL_WIDTH
     )
@@ -243,7 +246,7 @@ def run() -> None:
         if state.start_screen:
             show_start_screen(state)
         elif not game_over(state):
-            play()
+            play(state)
         else:
             state.running = False
 
