@@ -40,24 +40,29 @@ def move_snake(state) -> None:
 
 def reset_food(state) -> None:
     state.food_pos = random_pos(state.play_area)
+
     if pygame.Rect.collidepoint(state.snake_head, state.food_pos):
         reset_food(state)
     for chunk in state.snake_trail:
         if pygame.Rect.collidepoint(chunk, state.food_pos):
             reset_food(state)
-    state.food = pygame.Rect(
-        state.food_pos.x, state.food_pos.y, PIXEL_WIDTH, PIXEL_WIDTH
-    )
 
 
 def draw_food(state) -> None:
-    pygame.draw.rect(state.play_area, "red", state.food, 0, 2)
+    center = (
+        state.food_pos.x + (PIXEL_WIDTH / 2),
+        state.food_pos.y + (PIXEL_WIDTH / 2),
+    )
+    pygame.draw.circle(state.play_area, "red", center, PIXEL_WIDTH / 3)
 
 
 def handle_move_event(state) -> None:
     move_snake(state)
 
-    if not pygame.Rect.colliderect(state.snake_head, state.food) and state.snake_trail:
+    if (
+        not pygame.Rect.collidepoint(state.snake_head, state.food_pos)
+        and state.snake_trail
+    ):
         state.snake_trail.pop()
     else:
         reset_food(state)
@@ -175,14 +180,13 @@ def init_player(surface) -> pygame.Rect:
 
 def init_food(surface) -> pygame.Rect:
     food_pos = random_pos(surface)
-    food = pygame.Rect(food_pos.x, food_pos.y, PIXEL_WIDTH, PIXEL_WIDTH)
-    return food
+    return food_pos
 
 
 def init_player_and_food(state) -> None:
     return {
         "snake_head": init_player(state["play_area"]),
-        "food": init_food(state["play_area"]),
+        "food_pos": init_food(state["play_area"]),
     }
 
 
