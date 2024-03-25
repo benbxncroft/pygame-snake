@@ -4,20 +4,20 @@ import pygame
 
 pygame.init()
 
-PIXEL_WIDTH = 25
+PIXEL_WIDTH = 40
 DIRECTIONS = {"up": (0, -1), "down": (0, 1), "left": (-1, 0), "right": (1, 0)}
 MOVE_EVENT = pygame.event.custom_type()
 pygame.time.set_timer(MOVE_EVENT, 250)
 
 
-def random_pos(screen, is_player=False) -> pygame.Vector2:
+def random_pos(surface, is_player=False) -> pygame.Vector2:
     if is_player:
-        # do not start player on edge of screen
+        # do not start player on edge of area
         rand_value = (0.2, 0.8)
     else:
         rand_value = (0, 1)
-    start_x = random.uniform(*rand_value) * (screen.get_width() - PIXEL_WIDTH)
-    start_y = random.uniform(*rand_value) * (screen.get_height() - PIXEL_WIDTH)
+    start_x = random.uniform(*rand_value) * (surface.get_width() - PIXEL_WIDTH)
+    start_y = random.uniform(*rand_value) * (surface.get_height() - PIXEL_WIDTH)
     start_x = start_x // PIXEL_WIDTH * PIXEL_WIDTH
     start_y = start_y // PIXEL_WIDTH * PIXEL_WIDTH
     return pygame.Vector2(start_x, start_y)
@@ -39,7 +39,7 @@ def move_snake(state) -> None:
 
 
 def reset_food(state) -> None:
-    state.food_pos = random_pos(state.screen)
+    state.food_pos = random_pos(state.play_area)
     if pygame.Rect.collidepoint(state.snake_head, state.food_pos):
         reset_food(state)
     for chunk in state.snake_trail:
@@ -51,7 +51,7 @@ def reset_food(state) -> None:
 
 
 def draw_food(state) -> None:
-    pygame.draw.rect(state.screen, "red", state.food, 0, 2)
+    pygame.draw.rect(state.play_area, "red", state.food, 0, 2)
 
 
 def handle_move_event(state) -> None:
@@ -95,9 +95,9 @@ def handle_keys(state) -> None:
 
 
 def draw_snake_chunk(state, chunk) -> None:
-    pygame.draw.rect(state.screen, "grey", chunk, 0, 2)
+    pygame.draw.rect(state.play_area, "grey", chunk, 0, 2)
     pygame.draw.rect(
-        state.screen,
+        state.play_area,
         "green",
         (chunk.left + 2, chunk.top + 2, chunk.width - 4, chunk.width - 4),
         0,
@@ -167,41 +167,76 @@ def show_start_screen(state) -> None:
     pygame.display.flip()
 
 
-def init_player(screen) -> pygame.Rect:
-    start_pos = random_pos(screen, True)
+def init_player(surface) -> pygame.Rect:
+    start_pos = random_pos(surface, True)
     snake_head = pygame.Rect(start_pos.x, start_pos.y, PIXEL_WIDTH, PIXEL_WIDTH)
     return snake_head
 
 
-def init_food(screen) -> pygame.Rect:
-    food_pos = random_pos(screen)
+def init_food(surface) -> pygame.Rect:
+    food_pos = random_pos(surface)
     food = pygame.Rect(food_pos.x, food_pos.y, PIXEL_WIDTH, PIXEL_WIDTH)
     return food
 
 
-def init_player_and_food(screen) -> dict[str, pygame.Rect]:
+def init_player_and_food(state) -> None:
     return {
-        "snake_head": init_player(screen),
-        "food": init_food(screen),
+        "snake_head": init_player(state["play_area"]),
+        "food": init_food(state["play_area"]),
     }
 
 
-def collision(state) -> bool:
+def player_collision(state) -> bool:
     for chunk in state.snake_trail:
         if pygame.Rect.colliderect(state.snake_head, chunk):
             return True
 
 
 def in_bounds(state) -> bool:
-    screen_rect = pygame.Rect(0, 0, state.screen.get_width(), state.screen.get_height())
-    return screen_rect.collidepoint(
+    play_area_rect = pygame.Rect(
+        0, 0, state.play_area.get_width(), state.play_area.get_height()
+    )
+    return play_area_rect.collidepoint(
         state.snake_head.left + (PIXEL_WIDTH / 2),
         state.snake_head.top + (PIXEL_WIDTH / 2),
     )
 
 
 def game_over(state) -> bool:
-    return collision(state) and in_bounds(state)
+    return player_collision(state) or not in_bounds(state)
+
+
+def define_play_area() -> pygame.Surface:
+    width = PIXEL_WIDTH * 15
+    height = PIXEL_WIDTH * 15
+
+    play_area = pygame.Surface((width, height))
+    play_area.convert()
+
+    return play_area
+
+
+def blit_play_area(state) -> None:
+    x = (state.screen.get_width() / 2) - (state.play_area.get_width() / 2)
+    y = (state.screen.get_height() / 2) - (state.play_area.get_height() / 2)
+
+    state.screen.blit(state.play_area, (x, y))
+
+
+def reset_play_area(state) -> None:
+    border_rect_outer = pygame.Rect(
+        0, 0, state.play_area.get_width(), state.play_area.get_height()
+    )
+    border_rect_inner = pygame.Rect(
+        1, 1, state.play_area.get_width() - 2, state.play_area.get_height() - 2
+    )
+    pygame.draw.rect(state.play_area, "grey", border_rect_outer)
+    pygame.draw.rect(state.play_area, "black", border_rect_inner)
+
+
+def render_play_area(state) -> None:
+    blit_play_area(state)
+    reset_play_area(state)
 
 
 def play(state) -> None:
@@ -209,6 +244,7 @@ def play(state) -> None:
 
     state.screen.fill("black")
 
+    render_play_area(state)
     draw_food(state)
     draw_snake(state)
 
@@ -217,19 +253,21 @@ def play(state) -> None:
 
 def init() -> SimpleNamespace:
     state = {}
-    state["screen"] = pygame.display.set_mode((1280, 720))
-    state.update(init_player_and_food(state["screen"]))
-
+    screen = pygame.display.set_mode((1280, 720))
+    state["play_area"] = define_play_area()
     direction = random.choice(list(DIRECTIONS.values()))
 
     state.update(
         {
+            "screen": screen,
             "running": True,
             "start_screen": True,
             "snake_trail": [],
             "direction": direction,
         }
     )
+
+    state.update(init_player_and_food(state))
 
     return SimpleNamespace(**state)
 
