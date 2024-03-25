@@ -23,9 +23,44 @@ def random_pos(screen, is_player=False) -> pygame.Vector2:
     return pygame.Vector2(start_x, start_y)
 
 
+def move_snake(state) -> None:
+    state.snake_head.left += PIXEL_WIDTH * state.direction[0]
+    state.snake_head.top += PIXEL_WIDTH * state.direction[1]
+
+    state.snake_trail.insert(
+        0,
+        pygame.Rect(
+            state.snake_head.left - (PIXEL_WIDTH * state.direction[0]),
+            state.snake_head.top - (PIXEL_WIDTH * state.direction[1]),
+            PIXEL_WIDTH,
+            PIXEL_WIDTH,
+        ),
+    )
+
+
+def reset_food(state) -> None:
+    state.food_pos = random_pos(state.screen)
+    # while (pygame.Rect.collidepoint(food_pos.x, food_pos.y)):
+    #     food_pos = random_pos()
+    state.food = pygame.Rect(
+        state.food_pos.x, state.food_pos.y, PIXEL_WIDTH, PIXEL_WIDTH
+    )
+
+
+def draw_food(state) -> None:
+    pygame.draw.rect(state.screen, "red", state.food, 0, 2)
+
+
+def handle_move_event(state) -> None:
+    move_snake(state)
+
+    if not pygame.Rect.colliderect(state.snake_head, state.food) and state.snake_trail:
+        state.snake_trail.pop()
+    else:
+        reset_food(state)
+
+
 def handle_events(state) -> None:
-    # poll for events
-    # pygame.QUIT event means the user clicked X to close your window
     for event in pygame.event.get():
         if event.type == pygame.KEYDOWN:
             if state.start_screen:
@@ -34,32 +69,9 @@ def handle_events(state) -> None:
 
         if event.type == pygame.QUIT:
             state.running = False
+
         elif event.type == MOVE_EVENT:
-            state.snake_head.left += PIXEL_WIDTH * state.direction[0]
-            state.snake_head.top += PIXEL_WIDTH * state.direction[1]
-
-            state.snake_trail.insert(
-                0,
-                pygame.Rect(
-                    state.snake_head.left - (PIXEL_WIDTH * state.direction[0]),
-                    state.snake_head.top - (PIXEL_WIDTH * state.direction[1]),
-                    PIXEL_WIDTH,
-                    PIXEL_WIDTH,
-                ),
-            )
-
-            if (
-                not pygame.Rect.colliderect(state.snake_head, state.food)
-                and state.snake_trail
-            ):
-                state.snake_trail.pop()
-            else:
-                state.food_pos = random_pos(state.screen)
-                # while (pygame.Rect.collidepoint(food_pos.x, food_pos.y)):
-                #     food_pos = random_pos()
-                state.food = pygame.Rect(
-                    state.food_pos.x, state.food_pos.y, PIXEL_WIDTH, PIXEL_WIDTH
-                )
+            handle_move_event(state)
 
 
 def handle_keys(state) -> None:
@@ -90,49 +102,66 @@ def draw_snake_chunk(state, chunk) -> None:
     )
 
 
-def draw_start_screen(state) -> None:
+def draw_snake(state) -> None:
+    draw_snake_chunk(state, state.snake_head)
+    for chunk in state.snake_trail:
+        draw_snake_chunk(state, chunk)
+
+
+def create_start_screen(state) -> pygame.Surface:
     start_screen = pygame.Surface(state.screen.get_size())
     start_screen.convert()
     start_screen.fill("black")
+    return start_screen
 
-    if pygame.font:
-        primary_font = pygame.font.Font(None, 64)
-        text_lines = []
-        text_lines.append(
-            {
-                "text": primary_font.render("Press any key to start", True, "white"),
-                "height": (start_screen.get_height() / 2)
-                - (primary_font.get_linesize() / 2)
-                - 15,
-            }
-        )
-        secondary_font = pygame.font.Font(None, 32)
-        text_lines.append(
-            {
-                "text": secondary_font.render(
-                    "Use WASD or arrow keys to move", True, "white"
-                ),
-                "height": (start_screen.get_height() / 2)
-                + (secondary_font.get_linesize() / 2)
-                + 15,
-            }
-        )
 
-        for line in text_lines:
-            pos = line["text"].get_rect(
-                centerx=start_screen.get_width() / 2, centery=line["height"]
-            )
-            start_screen.blit(line["text"], pos)
+def render_text(size, text, colour) -> pygame.Surface:
+    font = pygame.font.Font(None, size)
+    return font.render(text, True, colour)
+
+
+def blit_text(surface, text_lines) -> None:
+    for line in text_lines:
+        pos = line["text"].get_rect(centerx=line["centerx"], centery=line["centery"])
+        surface.blit(line["text"], pos)
+
+
+def define_text_lines(start_screen) -> list:
+    text_lines = []
+    text_lines.append(
+        {
+            "text": render_text(64, "Press any key to start", "white"),
+            "centerx": start_screen.get_width() / 2,
+            "centery": (start_screen.get_height() / 2) - (64 / 2) - 15,
+        }
+    )
+    text_lines.append(
+        {
+            "text": render_text(32, "Use WASD or arrow keys to move", "white"),
+            "centerx": start_screen.get_width() / 2,
+            "centery": (start_screen.get_height() / 2) + (32 / 2) + 15,
+        }
+    )
+
+    return text_lines
+
+
+def draw_start_screen(state) -> None:
+    start_screen = create_start_screen(state)
+
+    if not pygame.font:
+        return
+
+    text_lines = define_text_lines(start_screen)
+
+    blit_text(start_screen, text_lines)
 
     state.screen.blit(start_screen, (0, 0))
 
 
-def in_bounds(state) -> bool:
-    screen_rect = pygame.Rect(0, 0, state.screen.get_width(), state.screen.get_height())
-    return screen_rect.collidepoint(
-        state.snake_head.left + (PIXEL_WIDTH / 2),
-        state.snake_head.top + (PIXEL_WIDTH / 2),
-    )
+def show_start_screen(state) -> None:
+    draw_start_screen(state)
+    pygame.display.flip()
 
 
 def init_player(screen) -> pygame.Rect:
@@ -152,6 +181,35 @@ def init_player_and_food(screen) -> dict[str, pygame.Rect]:
         "snake_head": init_player(screen),
         "food": init_food(screen),
     }
+
+
+def collision(state) -> bool:
+    for chunk in state.snake_trail:
+        if pygame.Rect.colliderect(state.snake_head, chunk):
+            return True
+
+
+def in_bounds(state) -> bool:
+    screen_rect = pygame.Rect(0, 0, state.screen.get_width(), state.screen.get_height())
+    return screen_rect.collidepoint(
+        state.snake_head.left + (PIXEL_WIDTH / 2),
+        state.snake_head.top + (PIXEL_WIDTH / 2),
+    )
+
+
+def game_over(state) -> bool:
+    return collision(state) and in_bounds(state)
+
+
+def play(state) -> None:
+    handle_keys(state)
+
+    state.screen.fill("black")
+
+    draw_food(state)
+    draw_snake(state)
+
+    pygame.display.flip()
 
 
 def init() -> SimpleNamespace:
@@ -180,36 +238,17 @@ def run() -> None:
     while state.running:
         clock.tick(60)  # limits FPS to 60
 
-        for chunk in state.snake_trail:
-            if pygame.Rect.colliderect(state.snake_head, chunk):
-                state.running = False
-
         handle_events(state)
 
         if state.start_screen:
-            draw_start_screen(state)
-            pygame.display.flip()
-
-        elif in_bounds(state):
-            handle_keys(state)
-
-            # fill the screen with a color to wipe away anything from last frame
-            state.screen.fill("black")
-
-            pygame.draw.rect(state.screen, "red", state.food, 0, 2)
-
-            draw_snake_chunk(state, state.snake_head)
-            for chunk in state.snake_trail:
-                draw_snake_chunk(state, chunk)
-
-            # flip() the display to put your work on screen
-            pygame.display.flip()
-
+            show_start_screen(state)
+        elif not game_over(state):
+            play()
         else:
             state.running = False
+
+    pygame.quit()
 
 
 if __name__ == "__main__":
     run()
-
-pygame.quit()
